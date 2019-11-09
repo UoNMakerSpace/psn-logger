@@ -1,49 +1,101 @@
 import json
+import os
+from datetime import datetime
+import sys
 
+import daemon
 import paho.mqtt.client as mqtt
 import pymysql
 
+import config
 import helpers
 
 
-mqtt_client = None
+broker = None
+
+def on_log(client, user_data, level, buffer):
+    print(buffer)
 
 def on_connect(client, user_data, flags, result):
     """ Called when the client has connected to the MQTT broker
     """
     if result != 0: return
 
-    mqtt_client.subscribe("nodes/#")
+    while True:
+        result = broker.subscribe([("nodes/+/outbound/+", 1),
+            ("nodes/+/reports/+", 1)])
+        if result[0] == mqtt.MQTT_ERR_SUCCESS: break
 
 def on_message(client, user_data, message):
     """ Called whenever a message is received from the MQTT broker
     """
-    if not message.topic.startswith("nodes/"): return
+    topic_sections = message.topic.split('/')
+    node_id = topic_sections[1]
+    scope = topic_sections[2]
+    message_id = topic_sections[3]
+    message_data = message.payload.decode()
 
-    # Parse the message JSON
-    try:
-        data = json.loads(message.payload.decode())
-    except: helpers.log("on_message 0")
+    if scope == "outbound":
+        if message_data == "get_session":
+            session = helpers.get_active_session(node_id)
+            inbound_topic = "nodes/" + node_id + "/inbound/" + message_id
 
-    # Save the report if it came from a registered node
-    try:
-        if helpers.node_exists(data["node"]) == True:
+            if session != False:
+                response = ("{ \"session_id\": " + str(session[0])
+                    + ", \"interval\": " + str(session[1])
+                    + ", \"batch_size\": " + str(session[2]) + " }")
+                broker.publish(inbound_topic, response, 1)
+            else: broker.publish(inbound_topic, "no_session", 1)
+
+    elif scope == "reports":
+        time = datetime.fromtimestamp(float(message_id))
+        report = json.loads(message_data)
+        inbound_topic = "nodes/" + node_id + "/inbound/" + message_id
+
+        if helpers.is_session_active(
+                node_id, report["session_id"], time) == True:
+
+            # Ignore duplicate entry exception
             try:
-                helpers.insert_report(data)
-            except: helpers.log("on_message 2")
-    except: helpers.log("on_message 1")
+                helpers.insert_report(node_id, time, report)
+
+                # Trigger any matching alarms
+                # ...
+            except pymysql.IntegrityError as e:
+                if e.args[0] != 1062: raise
+
+            broker.publish(inbound_topic, "ok", 1)
+        else: broker.publish(inbound_topic, "no_session", 1)
 
 
 if __name__ == "__main__":
-    mqtt_client = mqtt.Client()
-    mqtt_client.on_connect = on_connect
-    mqtt_client.on_message = on_message
+    # current_dir = os.path.dirname(os.path.realpath(__file__))
 
-    # Connect to the MQTT broker
+    # with daemon.DaemonContext(working_directory=current_dir):
+    if config.load() == False: sys.exit(1)
+
+    # Check the database is available (loop until success)
     while True:
         try:
-            mqtt_client.connect("localhost", 1883)
+            helpers.db_connection()
+            break
+        except: pass
 
-            # Automatically handles reconnection
-            mqtt_client.loop_forever()
-        except: helpers.log("__main__ 0")
+    # Create and connect to the MQTT broker (loop until success)
+    broker = mqtt.Client()
+    broker.on_connect = on_connect
+    broker.on_message = on_message
+    broker.on_log = on_log
+
+    while True:
+        try:
+            broker.connect(config.broker_address, config.broker_port)
+            break
+        except: pass
+
+    # Enter loop to handle messages (handles reconnecting)
+    try:
+        broker.loop_forever()
+    except KeyboardInterrupt:
+        broker.disconnect()
+        exit(0)
