@@ -1,2 +1,6 @@
-# Pnehotyping Sensor Network: Logger
-Receives MQTT messages from the nodes and logs them to the database
+# Phenotyping Sensor Network: Logger
+Receives MQTT messages from nodes and logs them to a MySQL database
+
+# Dependencies
+- Paho MQTT
+- PyMySQL
