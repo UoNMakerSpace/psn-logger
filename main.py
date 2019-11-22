@@ -30,18 +30,18 @@ def on_message(client, user_data, message):
     """ Called whenever a message is received from the MQTT broker
     """
     topic_sections = message.topic.split('/')
-    node_id = topic_sections[1]
+    node_address = topic_sections[1]
     scope = topic_sections[2]
     message_id = topic_sections[3]
     message_data = message.payload.decode()
 
     if scope == "outbound":
         if message_data == "get_session":
-            session = helpers.get_active_session(node_id)
-            inbound_topic = "nodes/" + node_id + "/inbound/" + message_id
+            session = helpers.get_active_session(node_address)
+            inbound_topic = "nodes/" + node_address + "/inbound/" + message_id
 
             if session != False:
-                response = ("{ \"session_id\": " + str(session[0])
+                response = ("{ \"session\": " + str(session[0])
                     + ", \"interval\": " + str(session[1])
                     + ", \"batch_size\": " + str(session[2]) + " }")
                 broker.publish(inbound_topic, response, 1)
@@ -50,14 +50,13 @@ def on_message(client, user_data, message):
     elif scope == "reports":
         time = datetime.fromtimestamp(float(message_id))
         report = json.loads(message_data)
-        inbound_topic = "nodes/" + node_id + "/inbound/" + message_id
+        inbound_topic = "nodes/" + node_address + "/inbound/" + message_id
 
-        if helpers.is_session_active(
-                node_id, report["session_id"], time) == True:
+        if helpers.is_session_active(report["session"], time) == True:
 
             # Ignore duplicate entry exception
             try:
-                helpers.insert_report(node_id, time, report)
+                helpers.insert_report(node_address, time, report)
 
                 # Trigger any matching alarms
                 # ...
