@@ -13,18 +13,17 @@ import helpers
 
 broker = None
 
-def on_log(client, user_data, level, buffer):
-    print(buffer)
 
 def on_connect(client, user_data, flags, result):
     """ Called when the client has connected to the MQTT broker
     """
-    if result != 0: return
+    if result: return
 
+    # Subscribe to the outbound and reports topics
     while True:
-        result = broker.subscribe([("nodes/+/outbound/+", 1),
-            ("nodes/+/reports/+", 1)])
-        if result[0] == mqtt.MQTT_ERR_SUCCESS: break
+        subscribe_result = broker.subscribe(
+            [("nodes/+/outbound/+", 0), ("nodes/+/reports/+", 0)])
+        if subscribe_result[0] == mqtt.MQTT_ERR_SUCCESS: break
 
 def on_message(client, user_data, message):
     """ Called whenever a message is received from the MQTT broker
@@ -35,56 +34,66 @@ def on_message(client, user_data, message):
     message_id = topic_sections[3]
     message_data = message.payload.decode()
 
+    inbound_topic = "nodes/" + node_address + "/inbound/" + message_id
+
+
     if scope == "outbound":
         if message_data == "get_session":
-            session = helpers.get_active_session(node_address)
-            inbound_topic = "nodes/" + node_address + "/inbound/" + message_id
+            try:
+                session = helpers.get_active_session(node_address)
+                if session == None:
+                    broker.publish(inbound_topic, "no_session", 0)
+                    return
 
-            if session != False:
-                response = ("{ \"session\": " + str(session[0])
-                    + ", \"interval\": " + str(session[1])
-                    + ", \"batch_size\": " + str(session[2]) + " }")
-                broker.publish(inbound_topic, response, 1)
-            else: broker.publish(inbound_topic, "no_session", 1)
+                response = ("{{ \"session\": {0}, \"interval\": {1}, \"batch_size\": {2} }}"
+                    .format(str(session[0]), str(session[1]), str(session[2])))
+                broker.publish(inbound_topic, response, 0)
+            except: broker.publish(inbound_topic, "error", 0)
 
     elif scope == "reports":
-        time = datetime.fromtimestamp(float(message_id))
-        report = json.loads(message_data)
-        inbound_topic = "nodes/" + node_address + "/inbound/" + message_id
+        try:
+            report = json.loads(message_data)
+            report_time = datetime.strptime(report["time"], "%Y-%m-%dT%H:%M:%SZ")
+        
+            if helpers.is_time_in_session(node_address, report["session"], report_time):
+                try:
+                    helpers.insert_report(node_address, report)
 
-        if helpers.is_session_active(report["session"], time) == True:
+                    # Trigger any matching alarms
+                    # ...
+                except pymysql.IntegrityError as e:
 
-            # Ignore duplicate entry exception
-            try:
-                helpers.insert_report(node_address, time, report)
+                    # Report for this node with this time already exists (unique key
+                    # constraint fails)
+                    if e.args[0] == 1062: pass
+                    
+                    # Session and/or node does not exist (foreign key constraint fails)
+                    elif e.args[0] == 1452:
+                        broker.publish(inbound_topic, "no_session", 0)
+                        return
+                    else: raise
 
-                # Trigger any matching alarms
-                # ...
-            except pymysql.IntegrityError as e:
-                if e.args[0] != 1062: raise
-
-            broker.publish(inbound_topic, "ok", 1)
-        else: broker.publish(inbound_topic, "no_session", 1)
+                broker.publish(inbound_topic, "ok", 0)
+            else: broker.publish(inbound_topic, "no_session", 0)
+        except: broker.publish(inbound_topic, "error", 0)
 
 
 if __name__ == "__main__":
     # current_dir = os.path.dirname(os.path.realpath(__file__))
 
     # with daemon.DaemonContext(working_directory=current_dir):
-    if config.load() == False: sys.exit(1)
+    if not config.load(): sys.exit(1)
 
-    # Check the database is available (loop until success)
-    while True:
-        try:
-            helpers.db_connection()
-            break
-        except: pass
+    # Check if the database is available
+    try:
+        helpers.db_connection()
+    except: sys.exit(1)
 
     # Create and connect to the MQTT broker (loop until success)
     broker = mqtt.Client()
     broker.on_connect = on_connect
     broker.on_message = on_message
-    broker.on_log = on_log
+    broker.on_log = lambda client, user_data, level, buffer: print(buffer)
 
     while True:
         try:
@@ -92,7 +101,7 @@ if __name__ == "__main__":
             break
         except: pass
 
-    # Enter loop to handle messages (handles reconnecting)
+    # Enter loop to handle messages (handles auto-reconnecting)
     try:
         broker.loop_forever()
     except KeyboardInterrupt:
