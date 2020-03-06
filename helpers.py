@@ -59,7 +59,7 @@ def insert_report(node_address, report):
 
     try:
         report_time = datetime.strptime(report["time"], "%Y-%m-%dT%H:%M:%SZ")
-        values = (report["session"], node_address,
+        values = (report["session_id"], node_address,
             report_time.strftime("%Y-%m-%d %H:%M:%S"), report["airt"], report["relh"],
             report["batv"])
 

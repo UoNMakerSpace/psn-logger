@@ -45,7 +45,7 @@ def on_message(client, user_data, message):
                     broker.publish(inbound_topic, "no_session", 0)
                     return
 
-                response = ("{{ \"session\": {0}, \"interval\": {1}, \"batch_size\": {2} }}"
+                response = ("{{ \"session_id\": {0}, \"interval\": {1}, \"batch_size\": {2} }}"
                     .format(str(session[0]), str(session[1]), str(session[2])))
                 broker.publish(inbound_topic, response, 0)
             except: broker.publish(inbound_topic, "error", 0)
@@ -55,7 +55,7 @@ def on_message(client, user_data, message):
             report = json.loads(message_data)
             report_time = datetime.strptime(report["time"], "%Y-%m-%dT%H:%M:%SZ")
         
-            if helpers.is_time_in_session(node_address, report["session"], report_time):
+            if helpers.is_time_in_session(node_address, report["session_id"], report_time):
                 try:
                     helpers.insert_report(node_address, report)
 
