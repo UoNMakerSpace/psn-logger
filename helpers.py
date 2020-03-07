@@ -6,14 +6,16 @@ import config
 
 
 def db_connection():
-    return pymysql.connect(config.database_address, config.database_username,
+    return pymysql.connect(
+        config.database_address, config.database_username,
         config.database_password, config.database)
 
 def get_active_session(node_address):
+    """ Gets the active session for a sensor node.
+    """
     QUERY = ("SELECT session_id, `interval`, batch_size FROM session_nodes WHERE "
         "node_id = (SELECT node_id FROM nodes WHERE mac_address = %s) AND "
-        "(end_time = NULL OR NOW() BETWEEN start_time AND end_time)")
-    
+        "start_time <= NOW() AND (end_time = NULL OR NOW() < end_time)")
     connection = None
 
     try:
@@ -31,17 +33,19 @@ def get_active_session(node_address):
         raise
 
 def is_time_in_session(node_address, session_id, time):
-    QUERY = ("SELECT 1 FROM session_nodes WHERE session_id = %s AND "
+    """ Checks whether a time is within the start and end time of a sensor node
+        inside a session.
+    """
+    QUERY = ("SELECT 0 FROM session_nodes WHERE session_id = %s AND "
         "node_id = (SELECT node_id FROM nodes WHERE mac_address = %s) AND "
-        "(end_time = NULL OR %s BETWEEN start_time AND end_time)")
-        
+        "start_time <= %s AND (end_time = NULL OR %s <= end_time)")
     connection = None
 
     try:
         connection = db_connection()
         cursor = connection.cursor()
 
-        cursor.execute(QUERY, (session_id, node_address, time))
+        cursor.execute(QUERY, (session_id, node_address, time, time))
         result = cursor.fetchone()
 
         connection.close()
@@ -52,9 +56,10 @@ def is_time_in_session(node_address, session_id, time):
         raise
 
 def insert_report(node_address, report):
+    """ Inserts a report from a node into the database.
+    """
     QUERY = ("INSERT INTO reports (session_id, node_id, time, airt, relh, batv) "
         "VALUES (%s, (SELECT node_id FROM nodes WHERE mac_address = %s), %s, %s, %s, %s)")
-
     connection = None
 
     try:
