@@ -1,5 +1,5 @@
-""" Taken from https://github.com/henryshunt/c-aws/blob/master/routines
-    /config.py and changed parameters for this project
+""" Taken from https://github.com/henryshunt/c-aws and changed parameters to
+    fit this project
 """
 
 from configparser import ConfigParser
@@ -16,7 +16,7 @@ broker_port = None
 database_address = None
 database_username = None
 database_password = None
-database = None
+database_name = None
 
 
 def __load_value(group, key, data_type, none_ok):
@@ -43,7 +43,7 @@ def load():
     """ Loads data from the config.ini file in the project root directory
     """
     global __parser, broker_address, broker_port, database_address
-    global database_username, database_password, database
+    global database_username, database_password, database_name
 
     try:
         __parser.read("config.ini")
@@ -60,7 +60,7 @@ def load():
             __DataType.STRING, False)
         database_password = __load_value("database", "password",
             __DataType.STRING, False)
-        database = __load_value("database", "database", __DataType.STRING,
+        database_name = __load_value("database", "database", __DataType.STRING,
             False)
     except: return False
 

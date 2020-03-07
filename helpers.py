@@ -8,7 +8,7 @@ import config
 def db_connection():
     return pymysql.connect(
         config.database_address, config.database_username,
-        config.database_password, config.database)
+        config.database_password, config.database_name)
 
 def get_active_session(node_address):
     """ Gets the active session for a sensor node.
