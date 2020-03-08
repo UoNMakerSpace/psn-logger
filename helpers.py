@@ -15,7 +15,7 @@ def get_active_session(node_address):
     """
     QUERY = ("SELECT session_id, `interval`, batch_size FROM session_nodes WHERE "
         "node_id = (SELECT node_id FROM nodes WHERE mac_address = %s) AND "
-        "start_time <= NOW() AND (end_time = NULL OR NOW() < end_time)")
+        "NOW() >= start_time AND (end_time = NULL OR NOW() < end_time)")
     connection = None
 
     try:
@@ -38,7 +38,7 @@ def is_time_in_session(node_address, session_id, time):
     """
     QUERY = ("SELECT 0 FROM session_nodes WHERE session_id = %s AND "
         "node_id = (SELECT node_id FROM nodes WHERE mac_address = %s) AND "
-        "start_time <= %s AND (end_time = NULL OR %s <= end_time)")
+        "%s >= start_time AND (end_time = NULL OR %s <= end_time)")
     connection = None
 
     try:
