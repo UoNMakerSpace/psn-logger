@@ -1,5 +1,5 @@
-""" Taken from https://github.com/henryshunt/c-aws and changed parameters to
-    fit this project
+""" Taken from https://github.com/henryshunt/c-aws and modified to support the
+    configuration options for this project
 """
 
 from configparser import ConfigParser
