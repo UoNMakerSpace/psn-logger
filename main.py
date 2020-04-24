@@ -56,7 +56,16 @@ def on_message(client, user_data, message):
                     helpers.insert_report(node_address, report)
 
                     # Trigger any matching alarms
-                    # ...
+                    try:
+                        helpers.trigger_alarms(helpers.get_triggered_alarms(node_address,
+                            report["session_id"], "airt", report["airt"]), report_time)
+                        helpers.trigger_alarms(helpers.get_triggered_alarms(node_address,
+                            report["session_id"], "relh", report["relh"]), report_time)
+                        helpers.trigger_alarms(helpers.get_triggered_alarms(node_address,
+                            report["session_id"], "batv", report["batv"]), report_time)
+                    except Exception as e:
+                        print(str(e))
+
                 except pymysql.IntegrityError as e:
 
                     # Report for this node with this time already exists (unique key
