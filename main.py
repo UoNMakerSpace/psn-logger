@@ -76,10 +76,11 @@ def process_alarms():
 
         try:
             # Get all alarms for this node that may be able to trigger
-            alarms = helpers.get_triggered_alarms(report[0], report[1]["session_id"])
+            alarms = helpers.get_triggered_alarms(report[0], report[1]["session_id"],
+                report_time)
             if alarms == None: continue
 
-            # Trigger any alarms that have a report value inside the alarm range
+            # Trigger any alarms that have a report value outside the alarm range
             for alarm in alarms:
                 try:
                     if alarm[1] == "airt":

@@ -78,14 +78,14 @@ def insert_report(node_address, report):
         if connection != None: connection.close()
         raise
 
-def get_triggered_alarms(node_address, session_id):
+def get_triggered_alarms(node_address, session_id, report_time):
     """ Gets any alarms that are triggered according to the alarm valid range
     """
     QUERY = ("SELECT alarm_id, parameter, minimum, maximum, (SELECT name FROM sessions WHERE session_id = %s) AS session_name, "
         "(SELECT location FROM session_nodes WHERE session_id = %s AND node_id = (SELECT node_id FROM nodes WHERE mac_address = %s)) AS node_location, "
         "(SELECT user_id FROM sessions WHERE session_id = %s) FROM session_alarms WHERE session_id = %s "
         "AND node_id = (SELECT node_id FROM nodes WHERE mac_address = %s) "
-        "AND (last_triggered IS NULL OR last_triggered <= DATE_SUB(NOW(), INTERVAL %s MINUTE))")
+        "AND (last_triggered IS NULL OR last_triggered <= DATE_SUB(%s, INTERVAL %s MINUTE))")
     connection = None
 
     try:
@@ -93,7 +93,7 @@ def get_triggered_alarms(node_address, session_id):
         cursor = connection.cursor()
 
         cursor.execute(QUERY, (session_id, session_id, node_address, session_id, session_id,
-            node_address, config.min_trigger_interval))
+            node_address, report_time.strftime("%Y-%m-%d %H:%M:%S"), config.min_trigger_interval))
         result = cursor.fetchall()
 
         connection.close()
