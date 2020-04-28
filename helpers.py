@@ -81,19 +81,21 @@ def insert_report(node_address, report):
 def get_triggered_alarms(node_address, session_id, report_time):
     """ Gets any alarms that are triggered according to the alarm valid range
     """
-    QUERY = ("SELECT alarm_id, parameter, minimum, maximum, (SELECT name FROM sessions WHERE session_id = %s) AS session_name, "
-        "(SELECT location FROM session_nodes WHERE session_id = %s AND node_id = (SELECT node_id FROM nodes WHERE mac_address = %s)) AS node_location, "
-        "(SELECT user_id FROM sessions WHERE session_id = %s) FROM session_alarms WHERE session_id = %s "
-        "AND node_id = (SELECT node_id FROM nodes WHERE mac_address = %s) "
-        "AND (last_triggered IS NULL OR last_triggered <= DATE_SUB(%s, INTERVAL %s MINUTE))")
+    QUERY = ("SELECT session_alarms.alarm_id, session_alarms.parameter, session_alarms.minimum, session_alarms.maximum, "
+        "sessions.name AS session_name, session_nodes.location AS node_location, sessions.user_id "
+        "FROM session_alarms INNER JOIN session_nodes ON session_alarms.session_id = session_nodes.session_id "
+        "INNER JOIN sessions on session_alarms.session_id = sessions.session_id "
+        "WHERE sessions.user_id like \"%@%\" AND sessions.session_id = %s "
+        "AND session_nodes.node_id = (SELECT node_id FROM nodes WHERE mac_address = %s)"
+        "AND (session_alarms.last_triggered IS NULL OR session_alarms.last_triggered <= DATE_SUB(%s, INTERVAL %s MINUTE))")
     connection = None
 
     try:
         connection = db_connection()
         cursor = connection.cursor()
 
-        cursor.execute(QUERY, (session_id, session_id, node_address, session_id, session_id,
-            node_address, report_time.strftime("%Y-%m-%d %H:%M:%S"), config.min_trigger_interval))
+        cursor.execute(QUERY, (session_id, node_address, 
+            report_time.strftime("%Y-%m-%d %H:%M:%S"), config.min_trigger_interval))
         result = cursor.fetchall()
 
         connection.close()
