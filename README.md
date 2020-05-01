@@ -12,19 +12,19 @@ PSN is a network of wireless battery-powered sensing nodes designed specifically
 # Configuration
 A file called `config.ini` is required in the root directory of the codebase. It must follow the following format:
 
-`[broker]`
-`address=` -- Address of the server hosting the MQTT process (e.g. `localhost`)
-`port=` -- Port number used by the above MQTT process (usually `1883`)
-`[database]`
-`address=` -- Address of the server hosting the MySQL database process (e.g. `localhost`)
-`username=` -- Username to access the database with
-`password=` -- Password of the above username
-`database=` -- Name of the database to use for storing the data
-`[alarms]`
-`email_server=` -- Address of the SMTP server to send alarm emails from (e.g. `smtp.gmail.com`)
-`email_address=` -- Email address to send alarm emails from
-`email_password=` -- Password of the above email address account
-`min_trigger_interval=` -- Do not send another email if an alarm triggers again within this number of minutes
+- `[broker]`
+- `address=` -- Address of the server hosting the MQTT process (e.g. `localhost`)
+- `port=` -- Port number used by the above MQTT process (usually `1883`)
+- `[database]`
+- `address=` -- Address of the server hosting the MySQL database process (e.g. `localhost`)
+- `username=` -- Username to access the database with
+- `password=` -- Password of the above username
+- `database=` -- Name of the database to use for storing the data
+- `[alarms]`
+- `email_server=` -- Address of the SMTP server to send alarm emails from (e.g. `smtp.gmail.com`)
+- `email_address=` -- Email address to send alarm emails from
+- `email_password=` -- Password of the above email address account
+- `min_trigger_interval=` -- Do not send another email if an alarm triggers again within this number of minutes
 
 # Database
 The following SQL code should be used to create the required database tables:
@@ -98,6 +98,7 @@ The following SQL code should be used to create the required database tables:
 
 # Dependencies
 - Python 3
-- Paho MQTT (for Python)
-- PyMySQL (for Python)
+- python-daemon (for Python)
+- paho-mqtt (for Python)
+- pymysql (for Python)
 - MariaDB (MySQL)
