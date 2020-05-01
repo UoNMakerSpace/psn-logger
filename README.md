@@ -5,6 +5,7 @@ PSN is a network of wireless battery-powered sensing nodes designed specifically
 # Usage
 - Install the dependencies (see the Dependencies section)
 - Create the database (see the Database section)
+- Ensure the MariaDB time zone is set to UTC
 - Create the configuration file (see the Configuration section)
 - Run `main.py` with Python
 
