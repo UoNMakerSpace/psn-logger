@@ -85,7 +85,7 @@ def get_triggered_alarms(node_address, session_id, report_time):
         "sessions.name AS session_name, session_nodes.location AS node_location, sessions.user_id "
         "FROM session_alarms INNER JOIN session_nodes ON session_alarms.session_id = session_nodes.session_id "
         "INNER JOIN sessions on session_alarms.session_id = sessions.session_id "
-        "WHERE sessions.user_id like \"%@%\" AND sessions.session_id = %s "
+        "WHERE sessions.user_id like \"%%@%%\" AND sessions.session_id = %s "
         "AND session_nodes.node_id = (SELECT node_id FROM nodes WHERE mac_address = %s)"
         "AND (session_alarms.last_triggered IS NULL OR session_alarms.last_triggered <= DATE_SUB(%s, INTERVAL %s MINUTE))")
     connection = None
