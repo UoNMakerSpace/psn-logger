@@ -101,4 +101,5 @@ The following SQL code should be used to create the required database tables:
 - python-daemon (for Python)
 - paho-mqtt (for Python)
 - pymysql (for Python)
+- Mosquitto
 - MariaDB (MySQL)
